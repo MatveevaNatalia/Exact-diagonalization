@@ -10,6 +10,13 @@ def Ground_State(Num_level, Num_part):
     '''
     Fills the vector for ground state
     '''
+    if Num_level < 0:
+        raise ValueError("Number of levels must be non negative.")
+    if Num_part < 0:
+        raise ValueError("Number of particles must be non negative.")
+    if Num_level < Num_part:
+        raise ValueError("Number of levels is smaller than the number of particles.")
+        
     v_ground = [0]*Num_level
     for i in range(0, Num_part):
         v_ground[i] = 1    
@@ -92,6 +99,14 @@ def Kill_State(index, state_bin_init, Num_level):
     Annihilation operator c_{index}. Kills the particle
     at energy level which is marked by variable index.
     '''
+    if(index >= Num_level):
+        raise ValueError("Index is bigger than number of levels")
+
+    if(index < 0 or state_bin_init < 0 or Num_level < 0):
+        raise ValueError("Index or state integer or number of levels is negative!")   
+        
+    # Make also check if number of bits in state_bin_init <= Num_levels
+    
     state_bin_fin = state_bin_init^(1<<(Num_level-1-index))
     if(state_bin_init < state_bin_fin):
         state_bin_fin = 0
@@ -107,6 +122,15 @@ def Create_State(index, state_bin_init, Num_level):
     Creation operator c^{+}_{index}. Creates the particle
     at energy level which is marked by variable index.
     '''
+    
+    if(index >= Num_level):
+        raise ValueError("Index is bigger than number of levels")
+        
+    if(index < 0 or state_bin_init < 0 or Num_level < 0):
+        raise ValueError("Index or state integer or number of levels is negative!")   
+        
+    # Make also check if number of bits in state_bin_init <= Num_levels
+    
     state_bin_fin = state_bin_init^(1<<(Num_level-1-index))
     if(state_bin_init > state_bin_fin):
         state_bin_fin = 0
@@ -133,7 +157,34 @@ def Find_Scat_Elem(Num_level):
                         for index in range(4):
                             list_temp[index] = index_list[index]
                         list_main.append(list_temp) 
+                        
+    if(Verification_Find_Scat_Elem(list_main) == 0):
+        raise RuntimeError("More then one unique index in scattering element!")
     return list_main
+
+
+def Verification_Find_Scat_Elem(list_main):
+    '''
+    This function checks if there are the same elements
+    in every sublist of list_main.
+    If yes, it returns check = 0
+    '''
+    
+    check = 1
+    for i in range(len(list_main)):
+        el_0 = list_main[i][0]
+        el_1 = list_main[i][1]
+        el_2 = list_main[i][2]
+        el_3 = list_main[i][3]
+        cond_1 = (el_0 == el_1 or el_0 == el_2 or el_0 == el_3)
+        cond_2 = (el_1 == el_2 or el_1 == el_3)
+        cond_3 = (el_2 == el_3)
+        
+        if(cond_1 or cond_2 or cond_3):
+            check = 0
+    return check
+        
+        
 
 
 def getKey(item):
