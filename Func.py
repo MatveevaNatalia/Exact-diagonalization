@@ -8,12 +8,14 @@ class ParamModel():
         self.Scat_ampl = Scat_ampl
         
 
-def Kin_Energy(level_index, Delta):
+def Kin_Energy(params):
     '''
-    Calculates the kinetic energy 
-    for a give energy level
+    Returns the array which contains single-particle energies
     '''
-    return Delta*level_index
+    energy_arr = [0]*params.Num_level    
+    for i in range(params.Num_level):
+        energy_arr[i] = params.Delta * i
+    return energy_arr
 
 
 def Ground_State(Num_level, Num_part):
@@ -82,7 +84,7 @@ def To_bitfield(n):
     '''
     return [1 if digit=='1' else 0 for digit in bin(n)[2:]]
     
-def Final_list_create(state_list, Delta):
+def Final_list_create(energy_arr, state_list, Delta):
     '''
     Creates the final list where 2 numbers correspond to each state.
     The first one is the kinetic energy and the second one is the 
@@ -93,21 +95,22 @@ def Final_list_create(state_list, Delta):
    
     for i_stat in range(0, len(state_list)):
         state_bin = To_integer(list(state_list[i_stat]))
-        Energy = Energy_Calc(state_bin, Num_level, Delta)    
+        Energy = Energy_Calc(energy_arr, state_bin, Num_level, Delta)    
         temp = [Energy, state_bin]
         final_list_with_energy[i_stat] = temp
        
     return final_list_with_energy 
 
 
-def Energy_Calc(state_bin, Num_level, Delta):
+def Energy_Calc(energy_arr, state_bin, Num_level, Delta):
     '''
     Calculates the kinetic energy for a given state
     '''
     Energy = 0
     for i in range(Num_level):
-        mask_res = (state_bin >> i)&1
-        Energy += mask_res * Kin_Energy(Num_level-1-i, Delta)
+        mask_res = (state_bin >> i)&1 # smaller bits correspond to higher energies 
+        #Energy += mask_res * Kin_Energy(Num_level-1-i, Delta) <- it was for old version of Kin_Energy
+        Energy += mask_res * energy_arr[Num_level-1-i]
     return Energy
 
 def Find_Number_Bits(index, state_bin, Num_level):
@@ -176,30 +179,37 @@ def Create_State(index, state_bin_init, Num_level):
     return (state_bin_fin, coeff)
 
 
-def Find_Scat_Elem(Num_level):
+def Find_Scat_Elem(params, restr = True):
     '''
     Finds all nonzero matrix elements of scattering operator.
-    Assumes the condition: V_{ijkl} != 0 only if i+j = k+l
-    '''
-    
+    If restr = True, assumes the condition: V_{ijkl} != 0 only if i+j = k+l
+    If restr = False, doesn't assume this condition
+    '''    
     list_main=[[]]*0
-    for i in range(0, Num_level):
-        for j in range(i, Num_level):
-            for k in range(0, Num_level):
-                for l in range(k, Num_level):
-                    if(i!=j and i!=k and i!=l and j!=k and j!=l and k!=l and (i+j)==(k+l)):
+    for i in range(0, params.Num_level):
+        for j in range(i, params.Num_level):
+            for k in range(0, params.Num_level):
+                for l in range(k, params.Num_level):
+                    
+                    if(restr == True):
+                        condition = (i!=j and i!=k and i!=l and j!=k and j!=l and k!=l and (i+j)==(k+l)) 
+                    else:
+                        condition = (i!=j and i!=k and i!=l and j!=k and j!=l and k!=l)
+                    if(condition):
                         index_list = [i, j, k, l]
-                        list_temp = [0]*4
-                        for index in range(4):
-                            list_temp[index] = index_list[index]
-                        list_main.append(list_temp) 
                         
-    if(Verification_Find_Scat_Elem(list_main) == 0):
-        raise RuntimeError("More then one unique index in scattering element!")
+                        #list_temp = [0]*4 <- was for old version
+                        list_temp = [[0]*4,[params.Scat_ampl]]
+                        for index in range(4):
+                            list_temp[0][index] = index_list[index]
+                        list_main.append(list_temp) 
+                                                
+                        if(Verification_Find_Scat_Elem(list_temp[0]) == 0):
+                            raise RuntimeError("More then one unique index in scattering element!")
     return list_main
 
 
-def Verification_Find_Scat_Elem(list_main):
+def Verification_Find_Scat_Elem(list_temp):
     '''
     This function checks if there are the same elements
     in every sublist of list_main.
@@ -207,20 +217,27 @@ def Verification_Find_Scat_Elem(list_main):
     '''
     
     check = 1
-    for i in range(len(list_main)):
-        el_0 = list_main[i][0]
-        el_1 = list_main[i][1]
-        el_2 = list_main[i][2]
-        el_3 = list_main[i][3]
-        cond_1 = (el_0 == el_1 or el_0 == el_2 or el_0 == el_3)
-        cond_2 = (el_1 == el_2 or el_1 == el_3)
-        cond_3 = (el_2 == el_3)
+
+    el_0 = list_temp[0]
+    el_1 = list_temp[1]
+    el_2 = list_temp[2]
+    el_3 = list_temp[3]
+
+    cond_1 = (el_0 == el_1 or el_0 == el_2 or el_0 == el_3)
+    cond_2 = (el_1 == el_2 or el_1 == el_3)
+    cond_3 = (el_2 == el_3)
         
-        if(cond_1 or cond_2 or cond_3):
-            check = 0
+    if(cond_1 or cond_2 or cond_3):
+        check = 0
+
     return check
         
-        
+def Set_Scat_Element(scat_elem, index, ampl):
+    scat_elem[index][1][0] = ampl
+    return scat_elem
+    
+    
+    
 def getKey(item):
     '''
     Supplimentary function for sorted() function. 
@@ -229,10 +246,11 @@ def getKey(item):
     '''
     return item[0]
 
-
-def Fill_myMatrix(scat_elem, final_list_sorted, Num_level, scat_ampl):
+    
+    
+def Fill_myMatrix(scat_elem, final_list_sorted, Num_level):
     '''
-    Fills the matrix for Hamiltonian. The electrostatic part is not included.
+    #Fills the matrix for Hamiltonian. The electrostatic part is not included.
     '''
     
     Num_state = len(final_list_sorted)
@@ -243,24 +261,25 @@ def Fill_myMatrix(scat_elem, final_list_sorted, Num_level, scat_ampl):
        
         for i_stat in range(Num_state):
             coeff = 1.0
-            (state_temp, coeff_temp) = Kill_State(scat_elem[i_elem][3], final_list_sorted[i_stat][1], Num_level)
+            (state_temp, coeff_temp) = Kill_State(scat_elem[i_elem][0][3], final_list_sorted[i_stat][1], Num_level)
             coeff *= coeff_temp 
-            #print(i_stat,'state_temp_1= ', state_temp, 'coeff_temp_1 =', coeff_temp, coeff)
+            
             if(coeff != 0):
-                (state_temp, coeff_temp) = Kill_State(scat_elem[i_elem][2], state_temp, Num_level)
+                (state_temp, coeff_temp) = Kill_State(scat_elem[i_elem][0][2], state_temp, Num_level)
                 coeff *= coeff_temp 
-                #print(i_stat, 'state_temp_2= ', state_temp,'coeff_temp_2 =', coeff_temp, coeff)
+               
                 if(coeff != 0):
-                    (state_temp, coeff_temp) = Create_State(scat_elem[i_elem][1], state_temp, Num_level)
+                    (state_temp, coeff_temp) = Create_State(scat_elem[i_elem][0][1], state_temp, Num_level)
                     coeff *= coeff_temp 
-                    #print(i_stat, 'state_temp_3= ', state_temp,'coeff_temp_3 =', coeff_temp, coeff)
+                    
+
                     if(coeff != 0):
-                        (state_temp, coeff_temp) = Create_State(scat_elem[i_elem][0], state_temp, Num_level)
+                        (state_temp, coeff_temp) = Create_State(scat_elem[i_elem][0][0], state_temp, Num_level)
                         coeff *= coeff_temp 
-                        #print(i_stat, 'state_temp_4= ', state_temp,'coeff_temp_4 =', coeff_temp, coeff)
+                        
                         if(coeff != 0):
                             i_col = Find_State_Index(final_list_sorted, state_temp)
-                            myMatrix[i_stat][i_col] += coeff * scat_ampl
+                            myMatrix[i_stat][i_col] += coeff * scat_elem[i_elem][1][0]
 
     # Fill Energy
     
@@ -271,7 +290,8 @@ def Fill_myMatrix(scat_elem, final_list_sorted, Num_level, scat_ampl):
     
 
     return myMatrix
-
+    
+        
 
 def Find_State_Index(final_list_sorted, state_bin):
     '''
@@ -294,7 +314,7 @@ def printMatrix(mat):
         print (i," ".join([str(y) for y in x])) 
         
         
-def SubspaceInfo(params, verbose_states = True, verbose_matrix = True):
+def SubspaceInfo(params, energy_arr, scat_elem, verbose_states = True, verbose_matrix = True):
     '''
     This function returns the information about N-subparticle space:
     the list "final_list_sorted" contains the basis vectors in binary repersentation 
@@ -302,9 +322,9 @@ def SubspaceInfo(params, verbose_states = True, verbose_matrix = True):
     '''
     v_ground = Ground_State(params.Num_level, params.Num_part)
     state_list = list(perm_unique(v_ground))
-    final_list = Final_list_create(state_list, params.Delta)
+    final_list = Final_list_create(energy_arr, state_list, params.Delta)
     final_list_sorted = sorted(final_list, key=getKey)
-    scat_elem = Find_Scat_Elem(params.Num_level)
+    #scat_elem = Find_Scat_Elem(params.Num_level) <- was in the old version
     if(verbose_states == True):
         print("Ground state vector:")
         print(v_ground)
@@ -319,7 +339,7 @@ def SubspaceInfo(params, verbose_states = True, verbose_matrix = True):
         print("List of all nonzero scattering elements:")
         print(scat_elem)
         
-    myMatrix = Fill_myMatrix(scat_elem, final_list_sorted, params.Num_level, params.Scat_ampl)   
+    myMatrix = Fill_myMatrix(scat_elem, final_list_sorted, params.Num_level)   
     if(verbose_matrix == True):    
         printMatrix(myMatrix)
     
@@ -353,3 +373,42 @@ def Kill_Eigen_State(ket_vector_Nplus1, params, index):
         temp = [ket_vector_Nplus1[i][0]*coeff, state_fin]
         ket_vector_final[i] = temp
     return( ket_vector_final)    
+
+def MastEqPrep(basis_Nplus1, eigen_vectors_Nplus1, params, basis_N, eigen_vectors_N, verbose):
+    '''
+    This function calculates A_{ij} = \sum_{m=0}^{M-1}<\phi_i|\hat{c}_m|\psi_j>
+    for given N and N+1.
+    '''   
+    
+    print("N= ", params.Num_part -1, "N+1= ", params.Num_part) 
+    
+    # Loop over indxes for the left state
+    for index_left in range(len(basis_N)):
+         # Loop over indxes for the right state
+        for index_right in range(len(basis_Nplus1)): 
+            sum_total = 0
+             # Loop over index for annihilation operator \hat{c}_index
+            for index in range(params.Num_level):
+                  
+                ket_vector_Nplus1=Eigen_vector_ket(basis_Nplus1, eigen_vectors_Nplus1, index_right)        
+                ket_vector_final = Kill_Eigen_State(ket_vector_Nplus1, params, index)
+                
+                # The complex conjugation in the left bra vector is not considered here,
+                # because all elements of eigen states are choosen to be real.
+                ket_vector_N = Eigen_vector_ket(basis_N, eigen_vectors_N, index_left) 
+
+                # Now we can calculate <phi_{index_left}|c_index|phi_{index_right}>
+                scal_prod = 0
+                for i in range (len(ket_vector_N)):
+                    for j in range (len(ket_vector_Nplus1)):
+                        if(ket_vector_N[i][1] == ket_vector_final[j][1]):
+                            scal_prod += ket_vector_N[i][0]*ket_vector_final[j][0]                        
+                sum_total += scal_prod
+
+                if(verbose == True):                    
+                    print("index= ", index, "i= ", index_left, "j= ", index_right)
+                    print(ket_vector_N)
+                    print(ket_vector_Nplus1)
+                    print(ket_vector_final)    
+                    print("scal_prod= ", scal_prod)
+            print("i= ", index_left, "j=", index_right, sum_total)
