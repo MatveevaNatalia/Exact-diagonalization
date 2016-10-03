@@ -208,7 +208,7 @@ def Find_Scat_Elem_old(params, restr = True):
             for k in range(0, params.Num_level):
                 for l in range(k, params.Num_level):
                                         
-                    cond = (i != j and i!=k and i!=l and j!=k and j!=l and k!=l)
+                    cond = (i!=j and i!=k and i!=l and j!=k and j!=l and k!=l)
                     
                     if(restr):
                         cond = (cond and i+j == k+l)
@@ -331,7 +331,7 @@ def Fill_myMatrix(scat_elem, final_list_sorted, Num_level):
             
             # Action of V_ijkl on basis state 'state_initial' 
             state_temp, coeff = Fill_myMatrix_Helper(state_initial, scat_index, Num_level)
-
+                          
             if(coeff != 0):                            
                 i_col = Find_State_Index(final_list_sorted, state_temp)
                 myMatrix[i_stat][i_col] += coeff * scat_ampl 
