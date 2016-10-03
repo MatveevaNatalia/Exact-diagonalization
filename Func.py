@@ -12,8 +12,9 @@ def Kin_Energy(params):
     '''
     Returns the array which contains single-particle energies
     '''
-    energy = [0]*params.Num_level    
-    energy = [i * params.Delta for i, __ in enumerate(energy)]
+    #energy = [0]*params.Num_level    
+    #energy = [i * params.Delta for i, __ in enumerate(energy)]
+    energy = [i * params.Delta for i in range(params.Num_level)]
     
     return energy
 
@@ -148,7 +149,7 @@ def Kill_State(index, state_bin_init, Num_level):
     number_perm = Find_Number_Bits(index, state_bin_init, Num_level)
     coeff  = alive * (-1)**number_perm
         
-    return (state_bin_fin, coeff)
+    return state_bin_fin, coeff
 
 
 
@@ -176,10 +177,25 @@ def Create_State(index, state_bin_init, Num_level):
     number_perm = Find_Number_Bits(index, state_bin_init, Num_level)
     coeff  *= (-1)**number_perm
     
-    return (state_bin_fin, coeff)
+    return state_bin_fin, coeff
 
 
-def Find_Scat_Elem(params, restr = True):
+def Operator_c(ACTION, index, state_bin_init, Num_level):
+    '''
+    This is the unique function for Create_State and Kill_State
+    '''
+    
+    if ACTION == "Create":
+        state_bin_fin, coeff = Create_State(index, state_bin_init, Num_level)
+    elif ACTION == "Kill":
+        state_bin_fin, coeff = Kill_State(index, state_bin_init, Num_level)
+    else:
+        raise ValueError("Unrecognized ACTION is given to Operator_c function !") 
+    return state_bin_fin, coeff
+
+
+
+def Find_Scat_Elem_old(params, restr = True):
     '''
     Finds all nonzero matrix elements of scattering operator.
     If restr = True, assumes the condition: V_{ijkl} != 0 only if i+j = k+l
@@ -192,19 +208,58 @@ def Find_Scat_Elem(params, restr = True):
             for k in range(0, params.Num_level):
                 for l in range(k, params.Num_level):
                                         
-                    cond = (i!=j and i!=k and i!=l and j!=k and j!=l and k!=l)
+                    cond = (i != j and i!=k and i!=l and j!=k and j!=l and k!=l)
                     
                     if(restr):
                         cond = (cond and i+j == k+l)
                         
                     if(cond):
                                                 
-                        list_main.append([[i, j, k, l], [params.Scat_ampl] ])
+                        list_main.append([[i, j, k, l], params.Scat_ampl ]) 
                         
                         if(restr):
                             if(not Verification_Find_Scat_Elem([i, j, k, l])):
                                 raise RuntimeError("More then one unique index in scattering element!")
     return list_main
+
+def Find_Scat_Elem(params, restr = True):
+    '''
+    Finds all nonzero matrix elements of scattering operator.
+    If restr = True, assumes the condition: V_{ijkl} != 0 only if i+j = k+l
+    If restr = False, doesn't assume this condition
+    '''    
+    # Forming the array which contains unique pairs of indexes:
+    # pairs = [[0,1],[0,2],.., [1, 2], [1,3],...,[3,4]]
+    
+    pairs = []
+    for i in range(0, params.Num_level):
+        for j in range(i+1, params.Num_level):  
+            pairs.append([i,j])
+    print("Pairs array:")
+    print(pairs)
+
+    list_main = []
+    
+    for p, [i,j] in enumerate(pairs):
+        for q in range(p+1, len(pairs)): # can enumerate be used in the second loop also ?
+            [k,l] = pairs[q]
+            #print("p= ", p, "(i={},j={}) ".format(i,j), "q= ", q, "(k={},l={}) ".format(k,l))
+            
+            cond = (i!=k and i!=l and j!=k and j!=l) # i!=j and k!=l are already accounted in 'pairs'
+            
+            if(restr):
+                cond = (cond and i+j == k+l)
+                        
+            if(cond):                                                
+                list_main.append([[i, j, k, l], params.Scat_ampl ]) 
+                #print(i,j,k,l) 
+                    
+                if(restr):
+                    if(not Verification_Find_Scat_Elem([i, j, k, l])):
+                        raise RuntimeError("More then one unique index in scattering element!")             
+               
+    return list_main
+
 
 
 def Verification_Find_Scat_Elem(V_list):
@@ -228,7 +283,7 @@ def Verification_Find_Scat_Elem(V_list):
     return check
         
 def Set_Scat_Element(scat_elem, index, ampl):
-    scat_elem[index][1][0] = ampl
+    scat_elem[index][1] = ampl
     return scat_elem
     
     
@@ -241,8 +296,26 @@ def getKey(item):
     '''
     return item[0]
 
+def Fill_myMatrix_Helper(state_initial, scat_index, Num_level):
+    '''
+    This function helpes to fill the main matrix.
+    It performs action of operators  C^+_iC^+_jC_kC_l
+    on a given basis state.
+    '''
     
-    
+    coeff = 1.0     
+    state_temp = state_initial
+       
+    for ii in range(3, -1, -1):
+        if ii >= 2:
+            ACTION = "Kill"
+        else:
+            ACTION = "Create"
+        state_temp, coeff_temp = Operator_c(ACTION, scat_index[ii], state_temp, Num_level)          
+        coeff *= coeff_temp
+                  
+    return state_temp, coeff
+
 def Fill_myMatrix(scat_elem, final_list_sorted, Num_level):
     '''
     #Fills the matrix for Hamiltonian. The electrostatic part is not included.
@@ -250,40 +323,28 @@ def Fill_myMatrix(scat_elem, final_list_sorted, Num_level):
     
     Num_state = len(final_list_sorted)
     myMatrix =  [[0.0 for x in range(Num_state)] for y in range(Num_state)] 
-   
     
-    for [[i,j,k,l],[scat_ampl]] in scat_elem:        
+    for [scat_index, scat_ampl] in scat_elem:
         for i_stat, [__, state_initial] in enumerate(final_list_sorted):
-                        
-            coeff = 1.0
-            (state_temp, coeff_temp) = Kill_State(l, state_initial, Num_level)
-            coeff *= coeff_temp 
-
-            if(coeff == 0):
-                continue
-
-            (state_temp, coeff_temp) = Kill_State(k, state_temp, Num_level)
-            coeff *= coeff_temp 
-
-            if(coeff == 0):
-                continue
-
-            (state_temp, coeff_temp) = Create_State(j, state_temp, Num_level)
-            coeff *= coeff_temp    
             
-            if(coeff == 0):
-                continue
+            [i,j,k,l] = scat_index 
+            
+            # Action of V_ijkl on basis state 'state_initial' 
+            state_temp, coeff = Fill_myMatrix_Helper(state_initial, scat_index, Num_level)
+
+            if(coeff != 0):                            
+                i_col = Find_State_Index(final_list_sorted, state_temp)
+                myMatrix[i_stat][i_col] += coeff * scat_ampl 
                 
-            (state_temp, coeff_temp) = Create_State(i, state_temp, Num_level)
-            coeff *= coeff_temp  
+               
+            # Action of V_klij on basis state 'state_initial'  
             
-            if(coeff == 0):
-                continue
-            
-            i_col = Find_State_Index(final_list_sorted, state_temp)
-            
-            myMatrix[i_stat][i_col] += coeff * scat_ampl    
-    
+            state_temp1, coeff1 = Fill_myMatrix_Helper(state_initial, [k,l,i,j], Num_level)
+                          
+            if(coeff1 != 0):                            
+                i_col1 = Find_State_Index(final_list_sorted, state_temp1)
+                myMatrix[i_stat][i_col1] += coeff1 * scat_ampl     
+                                    
     for i in range(Num_state):
         for j in range(Num_state):
             if(i == j):
