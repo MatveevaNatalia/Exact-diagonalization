@@ -18,7 +18,10 @@ print("#####################################################################")
 
 H_Np1 = HCalc(num_level, delta, scat_ampl, num_part)
 
-energy_arr_Np1 = H_Np1.kin_energy()
+#energy_arr_Np1 = H_Np1.kin_energy()
+
+energy_arr_Np1 = [-1.5*delta, -0.5*delta, 0.5*delta, 1.5*delta]
+
 print_kin_energy(energy_arr_Np1)
 
 scat_elem_Np1 = H_Np1.find_scat_elem(restr=True)
@@ -41,7 +44,11 @@ print("######################################################################")
 
 H_N = HCalc(num_level, delta, scat_ampl, num_part-1)
 
-energy_arr_N = H_N.kin_energy()
+#energy_arr_N = H_N.kin_energy()
+
+energy_arr_N = [-1.5*delta, -0.5*delta, 0.5*delta, 1.5*delta]
+
+
 print_kin_energy(energy_arr_N)
 
 scat_elem_N = H_N.find_scat_elem(restr=True)
@@ -68,30 +75,36 @@ print("######################################################################")
 
 gamma_L = 1.
 gamma_R = 1.
-V_L = 0.1
-V_R = 0.1
+V_L = 5.
+V_R = 3.
+gap = 1.5
 
-mu_minus = -0.1
+mu_minus = -3.
 mu_plus = 0.1
 period = 1.
 
-mu = Mu(mu_minus,mu_plus, period)
+#mu = Mu(mu_minus,mu_plus, period)
 
-wf_L = [wf_amp("left", i) for i in range(num_level)]
+#wf_L = [wf_amp("left", i) for i in range(num_level)]
+
+wf_L = [1, np.sqrt(3), np.sqrt(5), np.sqrt(7)]
 
 print(wf_L)
 
-rate_L = Rate(gamma_L, V_L, delta, num_level, mu_minus, wf_L, H_data_Np1, H_data_N)
+rate_L = Rate(gamma_L, V_L, gap, num_level, mu_minus, wf_L, H_data_Np1, H_data_N)
 
 wf_R = [wf_amp("right", i) for i in range(num_level)]
 
 print(wf_R)
 
-rate_R = Rate(gamma_R, V_R, delta, num_level, mu_minus, wf_R, H_data_Np1, H_data_N)
+rate_R = Rate(gamma_R, V_R, gap, num_level, mu_minus, wf_R, H_data_Np1, H_data_N)
 
 my_tunnel = Tunneling(rate_L, rate_R)
 
-my_tunnel.matrix()
+the_matrix = my_tunnel.matrix()
+print_matrix(the_matrix)
+
+
 
 #print("Removal rate, right")
 #for a in range(4):

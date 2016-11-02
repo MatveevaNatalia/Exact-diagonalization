@@ -28,7 +28,7 @@ def print_Fock_basis(basis_Fock):
 
 def print_matrix(mat):
     # Prints the matrix for Hamiltonian
-    print("Matrix representation of Hamiltonian")
+    #print("Matrix representation of Hamiltonian")
     print (" ","   ".join([str(x) for x in range(len(mat))]))
     for i,x in enumerate(mat):
         print (i," ".join([str(y) for y in x]))

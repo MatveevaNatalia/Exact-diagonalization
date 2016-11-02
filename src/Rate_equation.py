@@ -5,103 +5,16 @@ sys.path.insert(0, "./src")
 from Func import *
 from quant_operators import *
 
-def RemovalRate(basis_Nplus1, eigen_Nplus1, params, basis_N, eigen_N, verbose):
-    '''
-    This function calculates
-    A_{ij} = \sum_{m=0}^{M-1}<\phi^N_i|\hat{c}_m|\psi^{N+1}_j>
-    for given N and N+1.
-    '''
-
-    print("N= ", params.Num_part -1, "N+1= ", params.Num_part)
-
-    # Loop over indexes for the left state
-    for index_left in range(len(basis_N)):
-        # Loop over indexes for the right state
-        for index_right in range(len(basis_Nplus1)):
-            sum_total = 0
-            # Loop over indexes for annihilation operator \hat{c}_index
-            for index in range(params.Num_level):
-
-                ket_Nplus1 = eigen_vector_ket(basis_Nplus1, eigen_Nplus1, index_right)
-                ket_final = kill_eigen_state(ket_Nplus1, params, index)
-
-                # The complex conjugation in the left bra vector is not considered here,
-                # because all elements of eigen states are choosen to be real.
-                ket_N = eigen_vector_ket(basis_N, eigen_N, index_left)
-
-                # Now we can calculate <phi_{index_left}|c_index|phi_{index_right}>
-                scal_prod = 0
-
-                for [ff, ee] in ket_N:
-                    for [ff1, ee1] in ket_final:
-                        if ee == ee1:
-                            scal_prod += ff * ff1
-
-                sum_total += scal_prod
-
-                if (verbose):
-                    print("index= ", index, "i= ", index_left, "j= ", index_right)
-                    print(ket_N)
-                    print(ket_Nplus1)
-                    print(ket_final)
-                    print("scal_prod= ", scal_prod)
-            print("i= ", index_left, "j=", index_right, sum_total)
-
-def RemovalRate_new(basis_Nplus1, eigen_Nplus1, params, basis_N, eigen_N, param_lead, index_left, index_right, verbose):
-    '''
-    This function calculates
-    A_{ij} = \sum_{m=0}^{M-1}<\phi^N_i|\hat{c}_m|\psi^{N+1}_j>
-    for given N and N+1.
-    '''
-
-    print("N= ", params.Num_part - 1, "N+1= ", params.Num_part)
-
-    # Loop over indexes for the left state
-    #for index_left in range(len(basis_N)):
-        # Loop over indexes for the right state
-        #for index_right in range(len(basis_Nplus1)):
-    sum_total = 0
-    # Loop over indexes for annihilation operator \hat{c}_index
-    for index in range(params.Num_level):
-
-        wfunc_ampl = WaveFunctionAmplitude(param_lead.index_lead, index)
-
-        ket_Nplus1 = eigen_vector_ket(basis_Nplus1, eigen_Nplus1, index_right)
-        ket_final = kill_eigen_state(ket_Nplus1, params, index)
-
-        # The complex conjugation in the left bra vector is not considered here,
-        # because all elements of eigen states are choosen to be real.
-        ket_N = eigen_vector_ket(basis_N, eigen_N, index_left)
-
-        # Now we can calculate <phi_{index_left}|c_index|phi_{index_right}>
-        scal_prod = 0
-
-        for [ff, ee] in ket_N:
-            for [ff1, ee1] in ket_final:
-                if ee == ee1:
-                    scal_prod += ff * ff1
-
-        sum_total += scal_prod
-
-        if (verbose):
-            print("index= ", index, "i= ", index_left, "j= ", index_right)
-            print(ket_N)
-            print(ket_Nplus1)
-            print(ket_final)
-            print("scal_prod= ", scal_prod)
-    print("i= ", index_left, "j=", index_right, sum_total)
-
-
 def wf_amp(index_lead, index_state):
-    '''
-    Returns the wave function amplitude at the point of the contact
-    with electrode l (l = left or right)
-    '''
+
+    #Returns the wave function amplitude at the point of the contact
+    #with electrode l (l = left or right)
+
     if index_lead== 'left':
         amplitude = 1
     elif index_lead == 'right':
         if index_state % 2 == 1:
-            amplitude = 1 # ORHOGONALITY IN DANGER!
+            amplitude = 1 # ORTOHOGONALITY IN DANGER!
         else:
             amplitude = -1
     else:
@@ -111,20 +24,18 @@ def wf_amp(index_lead, index_state):
 
 
 
-def my_Heaviside(x):
-    return 0.5 * (np.sign(x) + 1)
+#def my_Heaviside(x):
+#    return 0.5 * (np.sign(x) + 1)
 
 
 def dens_state(x, delta):
-    nom = 2. * x * my_Heaviside(x - delta)
-    #print("H(x-delta)= {}".format(my_Heaviside(x - delta)))
 
-    denom = np.sqrt(x * x - delta * delta)
-    ds = nom/denom
-    #print("nom= {} denom= {} ds= {}".format(nom, denom, ds))
-    #if ds == np.inf:
-     #   raise ValueError("Density of state is singular !")
-    return ds
+    if x > delta:
+        return 2.*x / np.sqrt(x * x - delta * delta)
+    else:
+        return 0.
+
+
 
 
 class Mu():
@@ -147,10 +58,10 @@ class Mu():
 
 # data_Np1, data_np must be send by reference
 class Rate():
-    def __init__(self, gamma, vol, delta, num_lev, mu, wf, H_data_np1, H_data_n):
+    def __init__(self, gamma, vol, gap, num_lev, mu, wf, H_data_np1, H_data_n):
         self.gamma = gamma
         self.vol = vol
-        self.delta = delta
+        self.gap = gap
         self.num_lev = num_lev
         self.mu = mu
         self.wf = wf
@@ -217,15 +128,16 @@ class Rate():
 
         temp = Eb + self.mu - Ea + self.vol
 
-        #print("temp= {}".format(temp))
+        #print("temp= {} Delta= {}".format(temp, self.delta))
 
-        ds = dens_state(temp, self.delta)
+        ds = dens_state(temp, self.gap)
+        #ds = 1.
 
         #print("ds= {} gamma= {} sum_total= {} ".format(ds, self.gamma, sum_total))
 
-        #return sum_total*sum_total
+        return sum_total*sum_total
 
-        return  0.5*self.gamma * sum_total * sum_total * ds
+        #return  0.5*self.gamma * sum_total * sum_total * ds
 
     def addition_rate(self, index_left, index_right):
 
@@ -290,7 +202,8 @@ class Rate():
 
         # print("temp= {}".format(temp))
 
-        ds = dens_state(temp, self.delta)
+        ds = dens_state(temp, self.gap)
+        #ds = 1.
 
         # print("ds= {} gamma= {} sum_total= {} ".format(ds, self.gamma, sum_total))
 
@@ -309,34 +222,63 @@ class Tunneling():
         size_n = len(self.rate_l.H_data_n.eigen_vectors)
         size_np1 = len(self.rate_l.H_data_np1.eigen_vectors)
 
-        the_matrix = [[0.0 for x in range(num_a + num_b)] for y in range(num_a + num_b)]
+        the_matrix = [[0.0 for x in range(size_n + size_np1)] for y in range(size_n + size_np1)]
 
-        for i_row in range
-
-        '''print("Removal rate, left")
-        for a in range(len(self.rate_l.H_data_n.eigen_vectors)):
-            for b in range(len(self.rate_l.H_data_np1.eigen_vectors)):
+        print("Removal rate, left")
+        for a in range(size_n):
+            for b in range(size_np1):
                 r_ab_l = self.rate_l.removal_rate(a, b)
                 print("a= ", a, "b=", b, r_ab_l)
 
         print("Addition rate, left")
-        for a in range(len(self.rate_l.H_data_n.eigen_vectors)):
-            for b in range(len(self.rate_l.H_data_np1.eigen_vectors)):
+        for a in range(size_n):
+            for b in range(size_np1):
                 a_ba_l = self.rate_l.addition_rate(b, a)
                 print("b= ", b, "a=", a, a_ba_l)
 
         print("Removal rate, right")
-        for a in range(len(self.rate_r.H_data_n.eigen_vectors)):
-            for b in range(len(self.rate_r.H_data_np1.eigen_vectors)):
+        for a in range(size_n):
+            for b in range(size_np1):
                 r_ab_r = self.rate_r.removal_rate(a, b)
                 print("a= ", a, "b=", b, r_ab_r)
 
         print("Addition rate, right")
-        for a in range(len(self.rate_r.H_data_n.eigen_vectors)):
-            for b in range(len(self.rate_r.H_data_np1.eigen_vectors)):
+        for a in range(size_n):
+            for b in range(size_np1):
                 a_ba_r = self.rate_r.addition_rate(b, a)
                 print("b= ", b, "a=", a, a_ba_r)
-        '''
+
+        # Filling the rows that correspond to p_alpha
+        s1 = 0
+        for i_row in range(size_n):
+
+            s1 = self.sum_helper(i_row, "add")
+
+            the_matrix[i_row][i_row] = s1
+
+            for i_col in range(size_n, size_n + size_np1):
+                r_ab_l = self.rate_l.removal_rate(i_row, i_col - size_np1)
+                r_ab_r = self.rate_r.removal_rate(i_row, i_col - size_np1)
+
+                the_matrix[i_row][i_col] = r_ab_l + r_ab_r
+
+        # Filling the rows that correspond to q_beta
+
+        s2 = 0
+        for i_row in range(size_n + size_np1):
+
+            s2 = self.sum_helper(i_row - size_n, "remove")
+
+            the_matrix[i_row][i_row] = s2
+
+            for i_col in range(size_n):
+                a_ab_l = self.rate_l.addition_rate(i_row - size_np1, i_col)
+                a_ab_r = self.rate_r.addition_rate(i_row - size_np1, i_col)
+
+                the_matrix[i_row][i_col] = a_ab_l + a_ab_r
+
+
+        return the_matrix
 
     def sum_helper(self, index, key):
         s = 0.
@@ -351,8 +293,8 @@ class Tunneling():
             # size is the same for rate_l and rate_r
             size = len(self.rate_l.H_data_n.eigen_vectors)
             for a in range(size):
-                r_ab_l = self.rate_l.remove_rate(a, index)
-                r_ab_r = self.rate_r.remove_rate(a, index)
+                r_ab_l = self.rate_l.removal_rate(a, index)
+                r_ab_r = self.rate_r.removal_rate(a, index)
                 s += r_ab_l + r_ab_r
         else:
             raise ValueError("Wrong key is given to sum_helper !")
