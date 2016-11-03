@@ -1,5 +1,7 @@
 import numpy as np
 from numpy import linalg as LA
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
 import sys
 import os.path
 sys.path.insert(0, "./src")
@@ -75,8 +77,8 @@ print("######################################################################")
 
 gamma_L = 1.
 gamma_R = 1.
-V_L = 5.
-V_R = 3.
+V_L = 5
+V_R = 3
 gap = 1.5
 
 mu_minus = -3.
@@ -93,7 +95,9 @@ print(wf_L)
 
 rate_L = Rate(gamma_L, V_L, gap, num_level, mu_minus, wf_L, H_data_Np1, H_data_N)
 
-wf_R = [wf_amp("right", i) for i in range(num_level)]
+#wf_R = [wf_amp("right", i) for i in range(num_level)]
+
+wf_R = [0,0,0,0]
 
 print(wf_R)
 
@@ -104,18 +108,21 @@ my_tunnel = Tunneling(rate_L, rate_R)
 the_matrix = my_tunnel.matrix()
 print_matrix(the_matrix)
 
+init_vec = [0,0,0,0, 1/6., 1/6., 1/6., 1/6., 1/6., 1/6.]
 
+#init_vec = [0.25, 0.25, 0.25, 0.25, 0, 0, 0, 0, 0, 0]
 
-#print("Removal rate, right")
-#for a in range(4):
-#    for b in range(6):
-#        Rab_R = rate_R.removal_rate(a, b)
-#        print("a= ", a, "b=", b, Rab_R)
+t = np.linspace(0, period/2.0, 1000)
 
-#print("Addition rate, right")
-#for a in range(4):
-#    for b in range(6):
-#        Aba_R = rate_R.addition_rate(b, a)
-#        print("b= ", b, "a=", a, Aba_R)
+y = odeint(my_tunnel.der_func, init_vec, t, args=(the_matrix,))
 
-#rate_R.tunel_matrix()
+plt.plot(t, y[:, 0], 'r-', label='p0 ')
+plt.plot(t, y[:, 1], '-', color='hotpink', label='p1 ')
+plt.plot(t, y[:, 2], '-', color='orange', label='p2 ')
+plt.plot(t, y[:, 3], 'b-', label='p3')
+plt.plot(t, y[:, 4], '-', color='black', label='q0 ')
+plt.plot(t, y[:, 8], '-', color='magenta', label='q4 ')
+plt.plot(t, y[:, 9], 'g-', label='q5 ')
+plt.legend(loc='upper left', fontsize=14, numpoints=1)
+plt.show()
+

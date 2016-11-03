@@ -146,8 +146,6 @@ class Rate():
         # x = E_a − V − E_b − μ
         # for given N and N+1.
 
-
-
         num_lev = self.num_lev
         basisFock_n = self.H_data_n.basisFock
         basisFock_np1 = self.H_data_np1.basisFock
@@ -207,9 +205,9 @@ class Rate():
 
         # print("ds= {} gamma= {} sum_total= {} ".format(ds, self.gamma, sum_total))
 
-        # return sum_total*sum_total
+        return sum_total*sum_total
 
-        return 0.5 * self.gamma * sum_total * sum_total * ds
+        #return 0.5 * self.gamma * sum_total * sum_total * ds
 
 
 class Tunneling():
@@ -257,26 +255,25 @@ class Tunneling():
             the_matrix[i_row][i_row] = s1
 
             for i_col in range(size_n, size_n + size_np1):
-                r_ab_l = self.rate_l.removal_rate(i_row, i_col - size_np1)
-                r_ab_r = self.rate_r.removal_rate(i_row, i_col - size_np1)
+                r_ab_l = self.rate_l.removal_rate(i_row, i_col - size_n)
+                r_ab_r = self.rate_r.removal_rate(i_row, i_col - size_n)
 
                 the_matrix[i_row][i_col] = r_ab_l + r_ab_r
 
         # Filling the rows that correspond to q_beta
 
         s2 = 0
-        for i_row in range(size_n + size_np1):
+        for i_row in range(size_n, size_n + size_np1):
 
             s2 = self.sum_helper(i_row - size_n, "remove")
 
             the_matrix[i_row][i_row] = s2
 
             for i_col in range(size_n):
-                a_ab_l = self.rate_l.addition_rate(i_row - size_np1, i_col)
-                a_ab_r = self.rate_r.addition_rate(i_row - size_np1, i_col)
+                a_ab_l = self.rate_l.addition_rate(i_row - size_n, i_col)
+                a_ab_r = self.rate_r.addition_rate(i_row - size_n, i_col)
 
                 the_matrix[i_row][i_col] = a_ab_l + a_ab_r
-
 
         return the_matrix
 
@@ -285,19 +282,39 @@ class Tunneling():
         if key == "add":
             # size is the same for rate_l and rate_r - make it member of H_data
             size = len(self.rate_l.H_data_np1.eigen_vectors)
+
             for b in range(size):
                 a_ba_l = self.rate_l.addition_rate(b, index)
                 a_ba_r = self.rate_r.addition_rate(b, index)
-                s += a_ba_l + a_ba_r
+
+                s -= a_ba_l + a_ba_r
+
         elif key == "remove":
             # size is the same for rate_l and rate_r
             size = len(self.rate_l.H_data_n.eigen_vectors)
             for a in range(size):
                 r_ab_l = self.rate_l.removal_rate(a, index)
                 r_ab_r = self.rate_r.removal_rate(a, index)
-                s += r_ab_l + r_ab_r
+                s -= r_ab_l + r_ab_r
         else:
             raise ValueError("Wrong key is given to sum_helper !")
-
         return s
 
+    def der_func(self, y, t, the_matrix):
+        # This function returns derivatives for odeint
+        size_n = len(self.rate_l.H_data_n.eigen_vectors)
+        size_np1 = len(self.rate_l.H_data_np1.eigen_vectors)
+
+        # y[0]= dp0/dt = list_der[0], ...,
+        # y[size_n -1]= dp_{size_n-1} = list_der[size_n-1]
+        # y[size_n] = dq0_dt = list_der[size_n], ...,
+        # y[size_n+size_np-1] = dq_{size_np -1} = list_der[size_n + size_np-1]
+
+        size = size_n + size_np1
+        list_der = [0] * size
+
+        for i_row in range(size):
+            for i_col in range(size):
+                list_der[i_row] = the_matrix[i_row][i_col] * y[i_col]
+
+        return list_der
