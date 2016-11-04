@@ -1,11 +1,8 @@
-'''
-Calculates all possible unique permutations
-of ground state
-'''
 
+#Calculates all possible unique permutations
+#of ground state
 
-# Beginning
-
+    #Beginning
 
 class UniqueElement:
     def __init__(self, value, occurrences):
@@ -32,7 +29,7 @@ def perm_unique_helper(listunique, result_list, d):
                     yield g
                 i.occurrences += 1
 
-# End
+    # End
 
 
 def to_integer(bitlist):

@@ -5,12 +5,12 @@ sys.path.insert(0, "./src")
 from Func import *
 from quant_operators import *
 
-def wf_amp(index_lead, index_state):
 
+def wf_amp(index_lead, index_state):
     #Returns the wave function amplitude at the point of the contact
     #with electrode l (l = left or right)
 
-    if index_lead== 'left':
+    if index_lead == 'left':
         amplitude = 1
     elif index_lead == 'right':
         if index_state % 2 == 1:
@@ -23,40 +23,13 @@ def wf_amp(index_lead, index_state):
     return amplitude
 
 
-
-#def my_Heaviside(x):
-#    return 0.5 * (np.sign(x) + 1)
-
-
-def dens_state(x, delta):
-
-    if x > delta:
-        return 2.*x / np.sqrt(x * x - delta * delta)
+def dens_state(x, gap):
+    if x > gap:
+        return 2.*x / np.sqrt(x * x - gap * gap)
     else:
         return 0.
 
 
-
-
-class Mu():
-    def __init__(self, mu_minus, mu_plus, period):
-        self.mu_minus = mu_minus
-        self.mu_plus = mu_plus
-        self.period = period
-    def calc(self, t):
-        # How to deal with jump?
-        # t - self/period / 2 < R_tol ?
-        if t < 0:
-            raise ValueError("Time must be positive !")
-        t_red = t % self.period
-        if t_red < self.period / 2:
-            return self.mu_minus
-        if t_red > self.period / 2 and t_red < self.period:
-            return self.mu_plus
-
-
-
-# data_Np1, data_np must be send by reference
 class Rate():
     def __init__(self, gamma, vol, gap, num_lev, mu, wf, H_data_np1, H_data_n):
         self.gamma = gamma
@@ -75,8 +48,6 @@ class Rate():
         # x = E_b + μ − E_a + V
         #for given N and N+1.
 
-
-
         num_lev = self.num_lev
         basisFock_n = self.H_data_n.basisFock
         basisFock_np1 = self.H_data_np1.basisFock
@@ -85,11 +56,8 @@ class Rate():
         eig_val_np1 = self.H_data_np1.eigen_values
         eig_val_n = self.H_data_n.eigen_values
 
-        #for index_left in range(len(basisFock_n)):
-            # Loop over indexes for the right state
-            #for index_right in range(len(basisFock_np1)):
-
         sum_total = 0
+
         # Loop over indexes for annihilation operator \hat{c}_index
         for index in range(self.num_lev):
 
@@ -109,31 +77,13 @@ class Rate():
                         scal_prod += ff * ff1
 
             sum_total += scal_prod * self.wf[index]
-            #print("scal_prod= {}".format(scal_prod))
-
-            #if (verbose):
-            #print("index= ", index, "i= ", index_left, "j= ", index_right)
-            #print(ket_n)
-            #print(ket_np1)
-            #print(ket_final)
-            #print("scal_prod= ", scal_prod)
 
         Ea = eig_val_n[index_left]
         Eb = eig_val_np1[index_right]
 
-        #print(eig_val_n)
-        #print(eig_val_np1)
-
-        #print("Ea= {} vol= {} Eb= {} mu= {}".format(Ea, self.vol, Eb, self.mu))
-
         temp = Eb + self.mu - Ea + self.vol
 
-        #print("temp= {} Delta= {}".format(temp, self.delta))
-
         ds = dens_state(temp, self.gap)
-        #ds = 1.
-
-        #print("ds= {} gamma= {} sum_total= {} ".format(ds, self.gamma, sum_total))
 
         return sum_total*sum_total
 
@@ -154,10 +104,6 @@ class Rate():
         eig_val_np1 = self.H_data_np1.eigen_values
         eig_val_n = self.H_data_n.eigen_values
 
-        # for index_left in range(len(basisFock_n)):
-        # Loop over indexes for the right state
-        # for index_right in range(len(basisFock_np1)):
-
         sum_total = 0
         # Loop over indexes for annihilation operator \hat{c}_index
         for index in range(self.num_lev):
@@ -169,7 +115,6 @@ class Rate():
             # The complex conjugation in the left bra vector is not considered here,
             # because all elements of eigen states are chosen to be real.
 
-
             # Now we can calculate <phi_{index_left}|c_index|phi_{index_right}>
             scal_prod = 0
 
@@ -179,31 +124,13 @@ class Rate():
                         scal_prod += ff * ff1
 
             sum_total += scal_prod * self.wf[index]
-            # print("scal_prod= {}".format(scal_prod))
-
-            # if (verbose):
-            # print("index= ", index, "i= ", index_left, "j= ", index_right)
-            # print(ket_n)
-            # print(ket_np1)
-            # print(ket_final)
-            # print("scal_prod= ", scal_prod)
 
         Ea = eig_val_n[index_right]
         Eb = eig_val_np1[index_left]
 
-        # print(eig_val_n)
-        # print(eig_val_np1)
-
-        # print("Ea= {} vol= {} Eb= {} mu= {}".format(Ea, self.vol, Eb, self.mu))
-
         temp = Ea - self.vol - Eb - self.mu
 
-        # print("temp= {}".format(temp))
-
         ds = dens_state(temp, self.gap)
-        #ds = 1.
-
-        # print("ds= {} gamma= {} sum_total= {} ".format(ds, self.gamma, sum_total))
 
         return sum_total*sum_total
 
@@ -216,11 +143,13 @@ class Tunneling():
         self.rate_r = rate_r
 
     def matrix(self):
+        # Returns the matrix for the lhs of the ODE system
+        # for probabilities {p} and {q}
+        size_n = self.rate_l.H_data_n.size
+        size_np1 = self.rate_l.H_data_np1.size
+        size_tot = size_n + size_np1
 
-        size_n = len(self.rate_l.H_data_n.eigen_vectors)
-        size_np1 = len(self.rate_l.H_data_np1.eigen_vectors)
-
-        the_matrix = [[0.0 for x in range(size_n + size_np1)] for y in range(size_n + size_np1)]
+        the_matrix = [[0.0 for x in range(size_tot)] for y in range(size_tot)]
 
         print("Removal rate, left")
         for a in range(size_n):
@@ -254,7 +183,7 @@ class Tunneling():
 
             the_matrix[i_row][i_row] = s1
 
-            for i_col in range(size_n, size_n + size_np1):
+            for i_col in range(size_n, size_tot):
                 r_ab_l = self.rate_l.removal_rate(i_row, i_col - size_n)
                 r_ab_r = self.rate_r.removal_rate(i_row, i_col - size_n)
 
@@ -263,7 +192,7 @@ class Tunneling():
         # Filling the rows that correspond to q_beta
 
         s2 = 0
-        for i_row in range(size_n, size_n + size_np1):
+        for i_row in range(size_n, size_tot):
 
             s2 = self.sum_helper(i_row - size_n, "remove")
 
@@ -278,21 +207,23 @@ class Tunneling():
         return the_matrix
 
     def sum_helper(self, index, key):
+        # For key = "add" returns the sum_b(A_{b, index}),
+        # for key = "remove" returns the sum_{a}(R_{a, index}).
+        # Here A is the addition rate, and
+        # R is the removal rate.
+
         s = 0.
         if key == "add":
-            # size is the same for rate_l and rate_r - make it member of H_data
-            size = len(self.rate_l.H_data_np1.eigen_vectors)
-
-            for b in range(size):
+            size_np1 = self.rate_l.H_data_np1.size
+            for b in range(size_np1):
                 a_ba_l = self.rate_l.addition_rate(b, index)
                 a_ba_r = self.rate_r.addition_rate(b, index)
 
                 s -= a_ba_l + a_ba_r
 
         elif key == "remove":
-            # size is the same for rate_l and rate_r
-            size = len(self.rate_l.H_data_n.eigen_vectors)
-            for a in range(size):
+            size_n = self.rate_l.H_data_n.size
+            for a in range(size_n):
                 r_ab_l = self.rate_l.removal_rate(a, index)
                 r_ab_r = self.rate_r.removal_rate(a, index)
                 s -= r_ab_l + r_ab_r
@@ -302,19 +233,19 @@ class Tunneling():
 
     def der_func(self, y, t, the_matrix):
         # This function returns derivatives for odeint
-        size_n = len(self.rate_l.H_data_n.eigen_vectors)
-        size_np1 = len(self.rate_l.H_data_np1.eigen_vectors)
+        size_n = self.rate_l.H_data_n.size
+        size_np1 = self.rate_l.H_data_np1.size
 
         # y[0]= dp0/dt = list_der[0], ...,
         # y[size_n -1]= dp_{size_n-1} = list_der[size_n-1]
         # y[size_n] = dq0_dt = list_der[size_n], ...,
         # y[size_n+size_np-1] = dq_{size_np -1} = list_der[size_n + size_np-1]
 
-        size = size_n + size_np1
-        list_der = [0] * size
+        size_tot = size_n + size_np1
+        list_der = [0] * size_tot
 
-        for i_row in range(size):
-            for i_col in range(size):
+        for i_row in range(size_tot):
+            for i_col in range(size_tot):
                 list_der[i_row] = the_matrix[i_row][i_col] * y[i_col]
 
         return list_der

@@ -6,11 +6,12 @@ from quant_operators import *
 
 
 class HData():
-    def __init__(self, basisFock, eigen_values, eigen_vectors, the_matrix):
+    def __init__(self, basisFock, eigen_values, eigen_vectors, the_matrix, size):
         self.basisFock = basisFock
         self.eigen_values = eigen_values
         self.eigen_vectors = eigen_vectors
         self.the_matrix = the_matrix
+        self.size = size
 
 
 class HCalc():
@@ -73,8 +74,6 @@ class HCalc():
             print(len(state_list))
             print("Fock states states written as integers with corresponding kinetic energy:")
             print(final_list)
-            #print("Sorted Fock states:")
-            #print(basisFock)
 
         return basisFock
 
@@ -119,15 +118,12 @@ class HCalc():
 
         basis_Fock = self.get_Fock_basis(energy_arr, verb_basis)
         the_matrix = self.fill_matrix(scat_elem, basis_Fock)
-
-        #if verb_matrix:
-        #    print_matrix(the_matrix)
-
         eigen_values, eigen_vectors = LA.eig(the_matrix)
+        size = len(eigen_vectors)
 
-        ni_data = HData(basis_Fock, eigen_values, eigen_vectors, the_matrix)
+        data = HData(basis_Fock, eigen_values, eigen_vectors, the_matrix, size)
 
-        return ni_data
+        return data
 
 
 

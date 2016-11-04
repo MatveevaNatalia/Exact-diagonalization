@@ -11,12 +11,13 @@ from printing_functions import *
 
 num_level = 4
 delta = 1.0
-scat_ampl = 1.0
+scat_ampl = 0.0
 num_part = 2
 
 print("#####################################################################")
 print("N+1 PARTICLE SUBSPACE")
 print("#####################################################################")
+
 
 H_Np1 = HCalc(num_level, delta, scat_ampl, num_part)
 
@@ -65,27 +66,21 @@ print_matrix(H_data_N.the_matrix)
 print_eigen_values(H_data_N.eigen_values)
 print_eigen_vectors(H_data_N.eigen_vectors)
 
-
-#print("######################################################################")
-#print("MATRIX ELEMENTS FOR MASTER EQUATION")
-#print("######################################################################")
-#RemovalRate(H_data_Np1.basisFock, H_data_Np1.eigen_vectors, params_Nplus1, basis_N, eigen_system_N.eigen_vectors, False)
-
 print("######################################################################")
 print("RATE EQUATION PREPARATION")
 print("######################################################################")
 
-gamma_L = 1.
-gamma_R = 1.
-V_L = 5
-V_R = 3
-gap = 1.5
+# Setting the model parameters
 
-mu_minus = -3.
+gamma_L = 1. # escape rate from the normal island into left electrode
+gamma_R = 1. # escape rate from the normal island into right electrode
+V_L = 0. # voltage on the left electrode
+V_R = 0. # voltage on the right electrode
+gap = 1.5 # superconducting gap
+
+mu_minus = -0.5
 mu_plus = 0.1
 period = 1.
-
-#mu = Mu(mu_minus,mu_plus, period)
 
 #wf_L = [wf_amp("left", i) for i in range(num_level)]
 
@@ -107,6 +102,10 @@ my_tunnel = Tunneling(rate_L, rate_R)
 
 the_matrix = my_tunnel.matrix()
 print_matrix(the_matrix)
+
+print("######################################################################")
+print("RATE EQUATION SOLVING")
+print("######################################################################")
 
 init_vec = [0,0,0,0, 1/6., 1/6., 1/6., 1/6., 1/6., 1/6.]
 
