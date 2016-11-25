@@ -85,9 +85,9 @@ class Rate():
 
         ds = dens_state(temp, self.gap)
 
-        return sum_total*sum_total
+        #return sum_total*sum_total
 
-        #return  0.5*self.gamma * sum_total * sum_total * ds
+        return 0.5*self.gamma * sum_total * sum_total * ds
 
     def addition_rate(self, index_left, index_right):
 
@@ -132,9 +132,9 @@ class Rate():
 
         ds = dens_state(temp, self.gap)
 
-        return sum_total*sum_total
+        #return sum_total*sum_total
 
-        #return 0.5 * self.gamma * sum_total * sum_total * ds
+        return 0.5 * self.gamma * sum_total * sum_total * ds
 
 
 class Tunneling():
@@ -246,6 +246,7 @@ class Tunneling():
 
         for i_row in range(size_tot):
             for i_col in range(size_tot):
-                list_der[i_row] = the_matrix[i_row][i_col] * y[i_col]
+                list_der[i_row] += the_matrix[i_row][i_col] * y[i_col]
 
         return list_der
+

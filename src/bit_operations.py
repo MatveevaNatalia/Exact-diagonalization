@@ -1,3 +1,4 @@
+import numpy as np
 
 #Calculates all possible unique permutations
 #of ground state
@@ -42,11 +43,19 @@ def to_integer(bitlist):
     return out
 
 
-def to_bitfield(n):
-    # Transform an integer into list which contains its
-    # binary representation.
-    # Ex: 5 -> (0,1,0,1)
-    return [1 if digit == '1' else 0 for digit in bin(n)[2:]]
+def to_bitfield(n, size):
+    # Transform an integer into numpy array, which contains its
+    # binary representation. The dimension of the array equals to
+    # 'size'.
+    # Ex: size = 4
+    # 5 -> (0,1,0,1)
+
+    bitfield = [1 if digit == '1' else 0 for digit in bin(n)[2:]]
+    if len(bitfield) < size:
+        temp = [0] * (size - len(bitfield))
+        bitfield = np.append(temp, bitfield)
+
+    return np.array(bitfield)
 
 
 def find_number_bits(index, state_bin, num_level):
