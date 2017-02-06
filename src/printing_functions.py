@@ -1,3 +1,6 @@
+import numpy as np
+
+
 def print_eigen_values(eigen_values):
     print("Eigen values: ")
     print(eigen_values)
@@ -28,6 +31,8 @@ def print_Fock_basis(basis_Fock):
 
 def print_matrix(mat):
     # Prints the matrix for Hamiltonian
-    print (" ","   ".join([str(x) for x in range(len(mat))]))
+    #np.set_printoptions(precision=3)
+    #print (" ","   ".join([str(x) for x in range(len(mat))]))
+    print("  ", "   ".join([str((round(x,3))) for x in range(len(mat))]))
     for i,x in enumerate(mat):
-        print (i," ".join([str(y) for y in x]))
+        print (i," ".join([str(round(y,3)) for y in x]))

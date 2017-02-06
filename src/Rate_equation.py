@@ -33,20 +33,22 @@ def dens_state(x, gap):
 class Rate():
     def __init__(self, gamma, vol, gap, num_lev, mu, wf, H_data_np1, H_data_n):
         self.gamma = gamma
-        self.vol = vol
+        self.vol = vol # voltage
         self.gap = gap
         self.num_lev = num_lev
         self.mu = mu
         self.wf = wf
-        self.H_data_np1 = H_data_np1
-        self.H_data_n = H_data_n
+        self.H_data_np1 = H_data_np1 # instance of class 'H_Data' for Np+1 particles
+        self.H_data_n = H_data_n # instance of class 'H_Data' for Np particles
+
 
     def removal_rate(self, index_left, index_right):
 
-        #This function calculates
+        #This method calculates
         #R_{ab} = gamma|\sum_{m=0}^{M-1}wf_m*<\phi^N_a|\hat{c}_m|\psi^{N+1}_b>|^2*nu(x),
         # x = E_b + μ − E_a + V
         #for given N and N+1.
+        # Variable 'index_left' corresponds to a, and 'index right' corresponds to b.
 
         num_lev = self.num_lev
         basisFock_n = self.H_data_n.basisFock
@@ -91,10 +93,11 @@ class Rate():
 
     def addition_rate(self, index_left, index_right):
 
-        # This function calculates
+        # This method calculates
         # A_{ba} = gamma|\sum_{m=0}^{M-1}wf_m*<\phi^N+1_b|\hat^+{c}_m|\phi^N_a>|^2*nu(x),
         # x = E_a − V − E_b − μ
         # for given N and N+1.
+        # Variable 'index_left' corresponds to a, and 'index right' corresponds to b.
 
         num_lev = self.num_lev
         basisFock_n = self.H_data_n.basisFock
@@ -139,10 +142,13 @@ class Rate():
 
 class Tunneling():
     def __init__(self, rate_l, rate_r):
-        self.rate_l = rate_l
-        self.rate_r = rate_r
+        self.rate_l = rate_l # instance of Rate class for the left electrode
+        self.rate_r = rate_r # instance of Rate class for the right electrode
+        self.the_matrix = self.matrix() # the matrix for rate equation
+        self.cur_vec_left = self.current_vector_left() # vector for the left current J^L_i
+        self.cur_vec_right = self.current_vector_right() # vector for the right current J^R_i
 
-    def matrix(self):
+    def matrix(self, verbose = False):
         # Returns the matrix for the lhs of the ODE system
         # for probabilities {p} and {q}
         size_n = self.rate_l.H_data_n.size
@@ -150,30 +156,30 @@ class Tunneling():
         size_tot = size_n + size_np1
 
         the_matrix = [[0.0 for x in range(size_tot)] for y in range(size_tot)]
+        if verbose:
+            print("Removal rate, left")
+            for a in range(size_n):
+                for b in range(size_np1):
+                    r_ab_l = self.rate_l.removal_rate(a, b)
+                    print("a= ", a, "b=", b, r_ab_l)
 
-        print("Removal rate, left")
-        for a in range(size_n):
-            for b in range(size_np1):
-                r_ab_l = self.rate_l.removal_rate(a, b)
-                print("a= ", a, "b=", b, r_ab_l)
+            print("Addition rate, left")
+            for a in range(size_n):
+                for b in range(size_np1):
+                    a_ba_l = self.rate_l.addition_rate(b, a)
+                    print("b= ", b, "a=", a, a_ba_l)
 
-        print("Addition rate, left")
-        for a in range(size_n):
-            for b in range(size_np1):
-                a_ba_l = self.rate_l.addition_rate(b, a)
-                print("b= ", b, "a=", a, a_ba_l)
+            print("Removal rate, right")
+            for a in range(size_n):
+                for b in range(size_np1):
+                    r_ab_r = self.rate_r.removal_rate(a, b)
+                    print("a= ", a, "b=", b, r_ab_r)
 
-        print("Removal rate, right")
-        for a in range(size_n):
-            for b in range(size_np1):
-                r_ab_r = self.rate_r.removal_rate(a, b)
-                print("a= ", a, "b=", b, r_ab_r)
-
-        print("Addition rate, right")
-        for a in range(size_n):
-            for b in range(size_np1):
-                a_ba_r = self.rate_r.addition_rate(b, a)
-                print("b= ", b, "a=", a, a_ba_r)
+            print("Addition rate, right")
+            for a in range(size_n):
+                for b in range(size_np1):
+                    a_ba_r = self.rate_r.addition_rate(b, a)
+                    print("b= ", b, "a=", a, a_ba_r)
 
         # Filling the rows that correspond to p_alpha
         s1 = 0
@@ -246,7 +252,76 @@ class Tunneling():
 
         for i_row in range(size_tot):
             for i_col in range(size_tot):
-                list_der[i_row] += the_matrix[i_row][i_col] * y[i_col]
+                list_der[i_row] += the_matrix[i_row][i_col] * y[i_col] # is member now
 
         return list_der
+
+    def current_vector_left(self):
+        # Calculates the vector for the left current:
+        # J^L_i = \sum_b{A^L_{bi}} - \sum_a{R^L_{ai}}
+        # b = 0...size_np1-1, a = 0...size_n-1
+
+        size_n = self.rate_l.H_data_n.size
+        size_np1 = self.rate_l.H_data_np1.size
+        size_tot = size_n + size_np1
+        cur_vec = np.zeros(size_tot)
+
+        for i in range(size_n):
+            ss = 0
+            for beta in range(size_np1):
+                a_bi_l = self.rate_l.addition_rate(beta, i)
+                ss += a_bi_l
+            cur_vec[i] = ss
+
+        for i in range(size_np1):
+            ss = 0
+            for alpha in range(size_n):
+                r_ai_l = self.rate_l.removal_rate(alpha, i)
+                ss += r_ai_l
+            cur_vec[size_n + i] = -ss
+
+        return cur_vec
+
+    def current_vector_right(self):
+        # Calculates the vector for the right current:
+        # J^R_i = -\sum_b{A^R_{bi}} + \sum_a{R^R_{ai}}
+        # b = 0...size_np1-1, a = 0...size_n-1
+        size_n = self.rate_r.H_data_n.size
+        size_np1 = self.rate_r.H_data_np1.size
+        size_tot = size_n + size_np1
+        cur_vec = np.zeros(size_tot)
+
+        for i in range(size_n):
+            ss = 0
+            for beta in range(size_np1):
+                a_bi_r = self.rate_r.addition_rate(beta, i)
+                ss += a_bi_r
+            cur_vec[i] = -ss
+
+        for i in range(size_np1):
+            ss = 0
+            for alpha in range(size_n):
+                r_ai_r = self.rate_r.removal_rate(alpha, i)
+                ss += r_ai_r
+            cur_vec[size_n + i] = ss
+
+        return cur_vec
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
